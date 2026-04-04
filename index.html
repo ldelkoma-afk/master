@@ -246,22 +246,47 @@
       padding: 0;
     }
     .td-cell.sub-cell { background: var(--subrow); }
+
+    .cell-wrap {
+      width: 100%; min-height: 46px;
+      cursor: text;
+      position: relative;
+    }
+    .sub-cell .cell-wrap { min-height: 38px; }
+
+    .cell-view {
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--text);
+      min-height: 46px;
+      word-break: break-all;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    .sub-cell .cell-view { min-height: 38px; }
+    .cell-view .empty-hint { color: var(--muted); font-style: italic; }
+    .cell-view a {
+      color: var(--primary);
+      text-decoration: underline;
+      word-break: break-all;
+    }
+    .cell-view a:hover { color: #3b55e6; }
+
     .cell-input {
+      display: none;
       width: 100%;
-      height: 100%;
       min-height: 46px;
       padding: 10px 12px;
       border: none;
       outline: none;
-      background: transparent;
+      background: var(--primary-light);
       font-size: 12px;
       color: var(--text);
       resize: none;
       font-family: inherit;
-      display: block;
     }
     .sub-cell .cell-input { min-height: 38px; }
-    .cell-input:focus { background: var(--primary-light); }
+    .cell-input.active { display: block; }
 
     /* ── Add strategy row ── */
     .tr-add-strategy td {
@@ -478,9 +503,7 @@ function renderBody() {
       const td = document.createElement('td');
       td.className = 'td-cell';
       const key = `${p.id}_${st.id}`;
-      td.innerHTML = `<textarea class="cell-input" placeholder="내용 입력..."
-        onblur="updateCell('${key}', this.value)"
-        >${esc(state.cells[key] || '')}</textarea>`;
+      td.innerHTML = buildCell(key);
       tr.appendChild(td);
     });
 
@@ -517,9 +540,7 @@ function renderBody() {
         const td = document.createElement('td');
         td.className = 'td-cell sub-cell';
         const key = `${p.id}_sub_${sub.id}`;
-        td.innerHTML = `<textarea class="cell-input" placeholder="내용 입력..."
-          onblur="updateCell('${key}', this.value)"
-          >${esc(state.cells[key] || '')}</textarea>`;
+        td.innerHTML = buildCell(key);
         subTr.appendChild(td);
       });
 
@@ -547,6 +568,63 @@ function renderBody() {
   addTd.innerHTML = `<button class="btn btn-primary" onclick="addStrategy()" style="font-size:13px;padding:6px 16px;">＋ 전략 추가</button>`;
   addTr.appendChild(addTd);
   tbody.appendChild(addTr);
+}
+
+// ── Cell builder & URL rendering ──────────────────────────────
+function buildCell(key) {
+  const val = state.cells[key] || '';
+  return `
+    <div class="cell-wrap" onclick="startCellEdit(event, '${key}', this)">
+      <div class="cell-view">${renderCellView(val)}</div>
+      <textarea class="cell-input"
+        onblur="endCellEdit('${key}', this)"
+        onkeydown="cellKey(event, this)"
+      >${esc(val)}</textarea>
+    </div>`;
+}
+
+function renderCellView(text) {
+  if (!text.trim()) return '<span class="empty-hint">내용 입력...</span>';
+  // Split by URLs so we can render them as links
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      const safeHref = esc(part);
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer"
+        onclick="event.stopPropagation()">${safeHref}</a>`;
+    }
+    return esc(part).replace(/\n/g, '<br>');
+  }).join('');
+}
+
+function startCellEdit(e, key, wrap) {
+  if (e.target.tagName === 'A') return; // let link click through
+  const view = wrap.querySelector('.cell-view');
+  const ta = wrap.querySelector('.cell-input');
+  view.style.display = 'none';
+  ta.classList.add('active');
+  ta.value = state.cells[key] || '';
+  ta.focus();
+  // auto-resize
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+function endCellEdit(key, ta) {
+  updateCell(key, ta.value);
+  const wrap = ta.closest('.cell-wrap');
+  const view = wrap.querySelector('.cell-view');
+  view.innerHTML = renderCellView(state.cells[key] || '');
+  view.style.display = '';
+  ta.classList.remove('active');
+  ta.style.height = '';
+}
+
+function cellKey(e, ta) {
+  if (e.key === 'Escape') { ta.blur(); return; }
+  // auto-resize on input
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
 }
 
 // ── Actions ────────────────────────────────────────────────────

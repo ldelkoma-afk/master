@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>마케팅 전략 관리</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #4f6ef7;
+      --primary-light: #eef0ff;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --success: #10b981;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --muted: #94a3b8;
+      --subrow: #f1f5f9;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    .app-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #3b55e6; }
+    .btn-ghost { background: transparent; color: var(--muted); padding: 4px 8px; font-size: 12px; }
+    .btn-ghost:hover { color: var(--danger); background: var(--danger-light); }
+    .btn-icon {
+      width: 28px; height: 28px; padding: 0;
+      border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      border: none; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-icon-add { background: var(--primary-light); color: var(--primary); }
+    .btn-icon-add:hover { background: var(--primary); color: #fff; }
+    .btn-icon-del { background: transparent; color: var(--muted); }
+    .btn-icon-del:hover { background: var(--danger-light); color: var(--danger); }
+    .btn-sub { font-size: 11px; padding: 3px 8px; border-radius: 5px; background: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; cursor: pointer; }
+    .btn-sub:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+
+    /* ── Table wrapper ── */
+    .table-wrap {
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      background: var(--surface);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      min-width: 600px;
+    }
+
+    /* ── Corner / Header row ── */
+    th, td { border: 1px solid var(--border); }
+
+    .th-corner {
+      background: #1e293b;
+      color: #fff;
+      width: 160px;
+      min-width: 160px;
+      padding: 14px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      vertical-align: middle;
+      position: sticky;
+      left: 0;
+      z-index: 10;
+    }
+
+    .th-product {
+      background: #1e293b;
+      color: #fff;
+      min-width: 160px;
+      padding: 10px 14px;
+      vertical-align: middle;
+      text-align: center;
+    }
+    .th-product-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .th-product-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      outline: none;
+      background: transparent;
+      color: #fff;
+      border: none;
+      text-align: center;
+      cursor: pointer;
+    }
+    .th-product-name:focus {
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+
+    .th-add-product {
+      background: #1e293b;
+      padding: 10px 14px;
+      vertical-align: middle;
+      text-align: center;
+      min-width: 60px;
+    }
+
+    /* ── Strategy rows ── */
+    .td-strategy {
+      background: var(--surface);
+      padding: 0;
+      position: sticky;
+      left: 0;
+      z-index: 5;
+    }
+    .strategy-label {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      gap: 6px;
+      min-height: 46px;
+    }
+    .strategy-toggle {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--muted); font-size: 11px;
+      flex-shrink: 0;
+      border-radius: 4px;
+      transition: background 0.15s;
+      user-select: none;
+    }
+    .strategy-toggle:hover { background: var(--primary-light); color: var(--primary); }
+    .strategy-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      min-width: 0;
+    }
+    .strategy-name:focus {
+      background: var(--primary-light);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+    .strategy-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
+    /* Sub-category rows */
+    .td-sub {
+      background: var(--subrow);
+      position: sticky;
+      left: 0;
+      z-index: 5;
+    }
+    .sub-label {
+      display: flex;
+      align-items: center;
+      padding: 7px 12px 7px 36px;
+      gap: 6px;
+      min-height: 38px;
+    }
+    .sub-bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .sub-name {
+      flex: 1;
+      font-size: 12px;
+      outline: none;
+      border: none;
+      background: transparent;
+      color: #475569;
+      cursor: pointer;
+    }
+    .sub-name:focus {
+      background: #e2e8f0;
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+
+    /* Add subcategory row */
+    .tr-add-sub td {
+      background: var(--subrow);
+      padding: 4px 12px 4px 36px;
+    }
+    .tr-add-sub.hidden { display: none; }
+
+    /* ── Cells ── */
+    .td-cell {
+      min-width: 160px;
+      vertical-align: top;
+      padding: 0;
+    }
+    .td-cell.sub-cell { background: var(--subrow); }
+    .cell-input {
+      width: 100%;
+      height: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 12px;
+      color: var(--text);
+      resize: none;
+      font-family: inherit;
+      display: block;
+    }
+    .sub-cell .cell-input { min-height: 38px; }
+    .cell-input:focus { background: var(--primary-light); }
+
+    /* ── Add strategy row ── */
+    .tr-add-strategy td {
+      background: var(--bg);
+      padding: 8px 12px;
+      border-top: 2px dashed var(--border);
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 28px;
+      width: 360px;
+      box-shadow: var(--shadow-md);
+      animation: fadeIn 0.15s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform: scale(0.96); } to { opacity:1; transform: scale(1); } }
+    .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .modal input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.15s;
+    }
+    .modal input:focus { border-color: var(--primary); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .btn-cancel { background: var(--bg); color: var(--text); }
+    .btn-cancel:hover { background: var(--border); }
+
+    /* ── Empty state ── */
+    .empty-hint {
+      color: var(--muted);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    /* row hover highlight */
+    tr:hover .td-strategy, tr:hover .td-cell { background: #fafbff !important; }
+    tr:hover .td-sub, tr:hover .sub-cell { background: #edf0f7 !important; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>📊 마케팅 전략 관리</h1>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="openProductModal()">＋ 상품 추가</button>
+  </div>
+</header>
+
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr id="headerRow"></tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">추가</h3>
+    <input type="text" id="modalInput" placeholder="이름을 입력하세요" onkeydown="handleModalKey(event)" />
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="confirmModal()">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let state = {
+  products: [],       // { id, name }
+  strategies: [],     // { id, name, collapsed }
+  subs: {},           // { strategyId: [{ id, name }] }
+  cells: {}           // { "pId_sId": text }
+};
+
+let nextId = 1;
+const newId = () => nextId++;
+
+// ── Persistence ────────────────────────────────────────────────
+function save() {
+  localStorage.setItem('mktStrategy', JSON.stringify({ state, nextId }));
+}
+function load() {
+  try {
+    const raw = localStorage.getItem('mktStrategy');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state = data.state;
+    nextId = data.nextId || 1;
+    return true;
+  } catch { return false; }
+}
+
+// ── Modal ──────────────────────────────────────────────────────
+let modalCallback = null;
+function openModal(title, placeholder, cb) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalInput').placeholder = placeholder;
+  document.getElementById('modalInput').value = '';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('modalInput').focus(), 50);
+  modalCallback = cb;
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  modalCallback = null;
+}
+function confirmModal() {
+  const val = document.getElementById('modalInput').value.trim();
+  if (!val) { document.getElementById('modalInput').focus(); return; }
+  if (modalCallback) modalCallback(val);
+  closeModal();
+}
+function handleModalKey(e) {
+  if (e.key === 'Enter') confirmModal();
+  if (e.key === 'Escape') closeModal();
+}
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ── Open product modal from header ─────────────────────────────
+function openProductModal() {
+  openModal('상품 추가', '상품명을 입력하세요', name => {
+    state.products.push({ id: newId(), name });
+    save(); render();
+  });
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function render() {
+  renderHeader();
+  renderBody();
+}
+
+function renderHeader() {
+  const row = document.getElementById('headerRow');
+  row.innerHTML = '';
+
+  // Corner cell
+  const corner = document.createElement('th');
+  corner.className = 'th-corner';
+  corner.textContent = '전략 \\ 상품';
+  row.appendChild(corner);
+
+  // Product headers
+  state.products.forEach(p => {
+    const th = document.createElement('th');
+    th.className = 'th-product';
+    th.innerHTML = `
+      <div class="th-product-inner">
+        <input class="th-product-name" value="${esc(p.name)}"
+          onblur="renameProduct(${p.id}, this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()"
+          title="클릭하여 이름 수정" />
+        <button class="btn-icon btn-icon-del" onclick="deleteProduct(${p.id})" title="상품 삭제">✕</button>
+      </div>`;
+    row.appendChild(th);
+  });
+
+  // Add product button cell
+  const addTh = document.createElement('th');
+  addTh.className = 'th-add-product';
+  addTh.innerHTML = `<button class="btn-icon btn-icon-add" onclick="openProductModal()" title="상품 추가">＋</button>`;
+  row.appendChild(addTh);
+}
+
+function renderBody() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  state.strategies.forEach(st => {
+    // Strategy row
+    const tr = document.createElement('tr');
+    tr.id = `str-${st.id}`;
+
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'td-strategy';
+    const hasSubs = (state.subs[st.id] || []).length > 0;
+    tdLabel.innerHTML = `
+      <div class="strategy-label">
+        <span class="strategy-toggle" onclick="toggleCollapse(${st.id})" title="하위 카테고리 펼치기/접기">
+          ${hasSubs ? (st.collapsed ? '▶' : '▼') : '　'}
+        </span>
+        <input class="strategy-name" value="${esc(st.name)}"
+          onblur="renameStrategy(${st.id}, this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()"
+          title="클릭하여 이름 수정" />
+        <div class="strategy-actions">
+          <button class="btn-icon btn-icon-del" onclick="deleteStrategy(${st.id})" title="전략 삭제">✕</button>
+        </div>
+      </div>`;
+    tr.appendChild(tdLabel);
+
+    state.products.forEach(p => {
+      const td = document.createElement('td');
+      td.className = 'td-cell';
+      const key = `${p.id}_${st.id}`;
+      td.innerHTML = `<textarea class="cell-input" placeholder="내용 입력..."
+        onblur="updateCell('${key}', this.value)"
+        >${esc(state.cells[key] || '')}</textarea>`;
+      tr.appendChild(td);
+    });
+
+    // Empty add-product column
+    const tdEmpty = document.createElement('td');
+    tr.appendChild(tdEmpty);
+    tbody.appendChild(tr);
+
+    // Sub-category rows
+    const subs = state.subs[st.id] || [];
+    const subsVisible = !st.collapsed;
+
+    subs.forEach(sub => {
+      const subTr = document.createElement('tr');
+      subTr.id = `sub-${sub.id}`;
+      if (!subsVisible) subTr.style.display = 'none';
+
+      const tdSub = document.createElement('td');
+      tdSub.className = 'td-sub';
+      tdSub.innerHTML = `
+        <div class="sub-label">
+          <span class="sub-bullet"></span>
+          <input class="sub-name" value="${esc(sub.name)}"
+            onblur="renameSub(${st.id}, ${sub.id}, this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()"
+            title="클릭하여 이름 수정" />
+          <div class="strategy-actions">
+            <button class="btn-icon btn-icon-del" onclick="deleteSub(${st.id}, ${sub.id})" title="하위 카테고리 삭제">✕</button>
+          </div>
+        </div>`;
+      subTr.appendChild(tdSub);
+
+      state.products.forEach(p => {
+        const td = document.createElement('td');
+        td.className = 'td-cell sub-cell';
+        const key = `${p.id}_sub_${sub.id}`;
+        td.innerHTML = `<textarea class="cell-input" placeholder="내용 입력..."
+          onblur="updateCell('${key}', this.value)"
+          >${esc(state.cells[key] || '')}</textarea>`;
+        subTr.appendChild(td);
+      });
+
+      const tdE = document.createElement('td');
+      subTr.appendChild(tdE);
+      tbody.appendChild(subTr);
+    });
+
+    // Add sub-category row
+    const addSubTr = document.createElement('tr');
+    addSubTr.className = `tr-add-sub ${subsVisible ? '' : 'hidden'}`;
+    addSubTr.id = `addsub-${st.id}`;
+    const addSubTd = document.createElement('td');
+    addSubTd.colSpan = state.products.length + 2;
+    addSubTd.innerHTML = `<button class="btn-sub" onclick="addSub(${st.id})">＋ 하위 카테고리 추가</button>`;
+    addSubTr.appendChild(addSubTd);
+    tbody.appendChild(addSubTr);
+  });
+
+  // Add strategy row
+  const addTr = document.createElement('tr');
+  addTr.className = 'tr-add-strategy';
+  const addTd = document.createElement('td');
+  addTd.colSpan = state.products.length + 2;
+  addTd.innerHTML = `<button class="btn btn-primary" onclick="addStrategy()" style="font-size:13px;padding:6px 16px;">＋ 전략 추가</button>`;
+  addTr.appendChild(addTd);
+  tbody.appendChild(addTr);
+}
+
+// ── Actions ────────────────────────────────────────────────────
+function renameProduct(id, name) {
+  const p = state.products.find(x => x.id === id);
+  if (p && name.trim()) { p.name = name.trim(); save(); renderHeader(); }
+}
+
+function deleteProduct(id) {
+  if (!confirm('이 상품을 삭제하시겠습니까?')) return;
+  state.products = state.products.filter(p => p.id !== id);
+  // Clean cells
+  Object.keys(state.cells).forEach(k => { if (k.startsWith(`${id}_`)) delete state.cells[k]; });
+  save(); render();
+}
+
+function addStrategy() {
+  openModal('전략 추가', '전략명을 입력하세요', name => {
+    state.strategies.push({ id: newId(), name, collapsed: false });
+    save(); render();
+  });
+}
+
+function renameStrategy(id, name) {
+  const s = state.strategies.find(x => x.id === id);
+  if (s && name.trim()) { s.name = name.trim(); save(); }
+}
+
+function deleteStrategy(id) {
+  if (!confirm('이 전략을 삭제하시겠습니까?')) return;
+  state.strategies = state.strategies.filter(s => s.id !== id);
+  delete state.subs[id];
+  Object.keys(state.cells).forEach(k => { if (k.endsWith(`_${id}`) || k.includes(`_sub_`)) { /* handled */ } });
+  save(); render();
+}
+
+function toggleCollapse(id) {
+  const s = state.strategies.find(x => x.id === id);
+  if (!s) return;
+  s.collapsed = !s.collapsed;
+  save(); render();
+}
+
+function addSub(strategyId) {
+  openModal('하위 카테고리 추가', '하위 카테고리명을 입력하세요', name => {
+    if (!state.subs[strategyId]) state.subs[strategyId] = [];
+    state.subs[strategyId].push({ id: newId(), name });
+    // Expand parent
+    const s = state.strategies.find(x => x.id === strategyId);
+    if (s) s.collapsed = false;
+    save(); render();
+  });
+}
+
+function renameSub(strategyId, subId, name) {
+  const subs = state.subs[strategyId] || [];
+  const sub = subs.find(x => x.id === subId);
+  if (sub && name.trim()) { sub.name = name.trim(); save(); }
+}
+
+function deleteSub(strategyId, subId) {
+  if (!confirm('이 하위 카테고리를 삭제하시겠습니까?')) return;
+  state.subs[strategyId] = (state.subs[strategyId] || []).filter(s => s.id !== subId);
+  Object.keys(state.cells).forEach(k => { if (k.includes(`_sub_${subId}`)) delete state.cells[k]; });
+  save(); render();
+}
+
+function updateCell(key, val) {
+  if (val.trim()) state.cells[key] = val;
+  else delete state.cells[key];
+  save();
+}
+
+// ── Utility ────────────────────────────────────────────────────
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Init ───────────────────────────────────────────────────────
+function init() {
+  if (!load()) {
+    // Default data matching the image
+    const pIds = [newId(), newId()];
+    state.products = [
+      { id: pIds[0], name: 'CCTV' },
+      { id: pIds[1], name: '복합기 렌탈' }
+    ];
+    const sIds = [newId(), newId(), newId(), newId(), newId()];
+    state.strategies = [
+      { id: sIds[0], name: '시장분석', collapsed: false },
+      { id: sIds[1], name: '영업전략', collapsed: false },
+      { id: sIds[2], name: '마케팅1', collapsed: false },
+      { id: sIds[3], name: '마케팅2', collapsed: false },
+      { id: sIds[4], name: '결과분석', collapsed: false }
+    ];
+    state.subs = {};
+    state.cells = {};
+    save();
+  }
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

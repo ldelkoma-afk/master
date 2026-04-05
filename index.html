@@ -200,6 +200,27 @@
     }
     .strategy-row.active .strategy-name-inp { color: #4f6ef7; font-weight: 600; }
 
+    /* ── Drag & Drop ── */
+    .drag-handle {
+      cursor: grab;
+      color: #d1d5db;
+      font-size: 14px;
+      flex-shrink: 0;
+      user-select: none;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .drag-handle:hover { color: #94a3b8; }
+    .drag-handle:active { cursor: grabbing; }
+
+    .product-tab.is-dragging  { opacity: 0.35; }
+    .product-tab.drag-before  { box-shadow: -3px 0 0 0 #4f6ef7; }
+    .product-tab.drag-after   { box-shadow:  3px 0 0 0 #4f6ef7; }
+
+    .strategy-block.is-dragging { opacity: 0.35; }
+    .strategy-block.drag-before { box-shadow: 0 -2px 0 0 #4f6ef7; }
+    .strategy-block.drag-after  { box-shadow: 0  2px 0 0 #4f6ef7; }
+
     .row-del {
       width: 22px; height: 22px;
       border-radius: 4px;
@@ -612,10 +633,52 @@ function renderTabs() {
   state.products.forEach(p => {
     const tab = document.createElement('div');
     tab.className = 'product-tab' + (p.id === activeProductId ? ' active' : '');
-    tab.onclick = e => { if (e.target.classList.contains('tab-del')) return; selectProduct(p.id); };
+    tab.dataset.pid = p.id;
+    tab.onclick = e => {
+      if (e.target.classList.contains('tab-del') || e.target.classList.contains('drag-handle')) return;
+      selectProduct(p.id);
+    };
+
+    // ── Tab drag ──
+    tab.draggable = true;
+    tab.ondragstart = e => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/pid', p.id);
+      setTimeout(() => tab.classList.add('is-dragging'), 0);
+    };
+    tab.ondragend = () => {
+      tab.classList.remove('is-dragging');
+      wrap.querySelectorAll('.product-tab').forEach(t =>
+        t.classList.remove('drag-before', 'drag-after'));
+    };
+    tab.ondragover = e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      wrap.querySelectorAll('.product-tab').forEach(t =>
+        t.classList.remove('drag-before', 'drag-after'));
+      const rect = tab.getBoundingClientRect();
+      tab.classList.add(e.clientX < rect.left + rect.width / 2 ? 'drag-before' : 'drag-after');
+    };
+    tab.ondragleave = () => tab.classList.remove('drag-before', 'drag-after');
+    tab.ondrop = e => {
+      e.preventDefault();
+      const fromId = Number(e.dataTransfer.getData('text/pid'));
+      if (fromId === p.id) return;
+      const rect   = tab.getBoundingClientRect();
+      const after  = e.clientX >= rect.left + rect.width / 2;
+      const arr    = state.products;
+      const fi     = arr.findIndex(x => x.id === fromId);
+      const [item] = arr.splice(fi, 1);
+      const ti     = arr.findIndex(x => x.id === p.id);
+      arr.splice(after ? ti + 1 : ti, 0, item);
+      save(); renderTabs();
+    };
+
     tab.innerHTML = `
+      <span class="drag-handle" title="드래그하여 순서 변경">⠿</span>
       <input class="tab-name-inp" value="${esc(p.name)}"
         onclick="selectProduct(${p.id}); event.stopPropagation()"
+        ondragstart="event.stopPropagation()"
         onblur="renameProduct(${p.id}, this.value)"
         onkeydown="if(event.key==='Enter')this.blur()" />
       <button class="tab-del" onclick="deleteProduct(${p.id})" title="삭제">✕</button>`;
@@ -642,15 +705,58 @@ function renderSidebar() {
     block.className = 'strategy-block';
 
     const isStrActive = activeStrategyKey === `s_${st.id}`;
+
+    // ── Strategy block drag ──
+    block.draggable = true;
+    block.ondragstart = e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') { e.preventDefault(); return; }
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/sid', st.id);
+      setTimeout(() => block.classList.add('is-dragging'), 0);
+    };
+    block.ondragend = () => {
+      block.classList.remove('is-dragging');
+      document.querySelectorAll('.strategy-block').forEach(b =>
+        b.classList.remove('drag-before', 'drag-after'));
+    };
+    block.ondragover = e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.strategy-block').forEach(b =>
+        b.classList.remove('drag-before', 'drag-after'));
+      const rect = block.getBoundingClientRect();
+      block.classList.add(e.clientY < rect.top + rect.height / 2 ? 'drag-before' : 'drag-after');
+    };
+    block.ondragleave = e => {
+      if (!block.contains(e.relatedTarget))
+        block.classList.remove('drag-before', 'drag-after');
+    };
+    block.ondrop = e => {
+      e.preventDefault();
+      const fromId = Number(e.dataTransfer.getData('text/sid'));
+      if (fromId === st.id) return;
+      const rect  = block.getBoundingClientRect();
+      const after = e.clientY >= rect.top + rect.height / 2;
+      const arr   = state.productStrategies[activeProductId];
+      const fi    = arr.findIndex(x => x.id === fromId);
+      const [item] = arr.splice(fi, 1);
+      const ti    = arr.findIndex(x => x.id === st.id);
+      arr.splice(after ? ti + 1 : ti, 0, item);
+      save(); renderSidebar();
+    };
+
     block.innerHTML = `
       <div class="strategy-row${isStrActive ? ' active' : ''}"
            onclick="selectStrategy('s_${st.id}')">
+        <span class="drag-handle" title="드래그하여 순서 변경"
+              ondragstart="event.stopPropagation()">⠿</span>
         <span class="strategy-toggle ${hasSubs ? 'has-subs' : ''}"
               onclick="event.stopPropagation(); toggleSubs(${st.id})">
           ${hasSubs ? (st.collapsed ? '▶' : '▼') : ''}
         </span>
         <input class="strategy-name-inp" value="${esc(st.name)}"
           onclick="if(activeStrategyKey!=='s_${st.id}') selectStrategy('s_${st.id}'); event.stopPropagation()"
+          ondragstart="event.stopPropagation()"
           onblur="renameStrategy(${st.id}, this.value)"
           onkeydown="if(event.key==='Enter')this.blur()" />
         <button class="row-del" onclick="event.stopPropagation(); deleteStrategy(${st.id})" title="삭제">✕</button>

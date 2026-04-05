@@ -560,9 +560,101 @@
     .btn-primary:hover { background: #3b55e6; }
     .btn-cancel { background: #f1f5f9; color: #475569; }
     .btn-cancel:hover { background: #e2e8f0; }
+
+    /* ══════════════════════════════
+       LOCK SCREEN
+    ══════════════════════════════ */
+    .lock-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0f172a;
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .lock-screen.show { display: flex; }
+
+    .lock-box {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 360px;
+      max-width: 92vw;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .lock-icon { font-size: 44px; margin-bottom: 12px; }
+    .lock-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .lock-sub {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    .lock-input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1.5px solid #334155;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      text-align: center;
+      letter-spacing: 0.15em;
+      transition: border 0.15s;
+      margin-bottom: 14px;
+    }
+    .lock-input:focus { border-color: #4f6ef7; }
+    .lock-input::placeholder { letter-spacing: normal; color: #475569; }
+    .lock-error {
+      font-size: 12px;
+      color: #f87171;
+      margin-bottom: 12px;
+      min-height: 18px;
+      text-align: center;
+    }
+    .lock-btn {
+      width: 100%;
+      padding: 12px;
+      background: #4f6ef7;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .lock-btn:hover { background: #3b55e6; }
   </style>
 </head>
 <body>
+
+<!-- ── Lock screen ── -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">마케팅 전략 관리</div>
+    <div class="lock-sub">접근하려면 비밀번호를 입력하세요</div>
+    <input class="lock-input" id="lockInput" type="password" placeholder="비밀번호 입력"
+      onkeydown="if(event.key==='Enter') submitLock()" autocomplete="current-password" />
+    <div class="lock-error" id="lockError"></div>
+    <button class="lock-btn" onclick="submitLock()">입력</button>
+  </div>
+</div>
 
 <!-- ── Top bar ── -->
 <div class="top-bar">
@@ -570,6 +662,7 @@
   <div class="tabs-scroll" id="productTabs"></div>
   <button class="tab-add" onclick="promptAddProduct()" title="상품 추가">＋</button>
   <div class="gist-btns">
+    <button class="gist-btn" onclick="changePassword()" title="비밀번호 변경">🔑 비밀번호</button>
     <button class="gist-btn" onclick="openGistSettings()" title="GitHub Gist 설정">⚙️ Gist</button>
     <button class="gist-btn" onclick="loadFromGist()" title="Gist에서 불러오기">⬇️ 불러오기</button>
     <button class="gist-btn gist-btn-save" onclick="saveToGist()" title="Gist에 저장">☁️ 저장</button>
@@ -1148,6 +1241,7 @@ function openModal(title, sub, fields, cb, okLabel = '확인', opts = {}) {
     return `
       <label class="field-label" for="mf_${f.id}">${f.label}</label>
       <input class="modal-input" id="mf_${f.id}"
+        type="${f.type === 'password' ? 'password' : 'text'}"
         placeholder="${esc(f.placeholder || '')}"
         value="${esc(f.value || '')}" />`;
   }).join('');
@@ -1183,6 +1277,60 @@ function esc(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Password Lock ─────────────────────────────────────────────
+const PASS_KEY = 'mktLockPass';
+const AUTH_KEY = 'mktAuth';
+const DEFAULT_PASS = '1234';
+
+function getStoredPass() {
+  return localStorage.getItem(PASS_KEY) || DEFAULT_PASS;
+}
+
+function checkLock() {
+  // Already authenticated this session
+  if (sessionStorage.getItem(AUTH_KEY) === 'ok') return;
+  document.getElementById('lockScreen').classList.add('show');
+  setTimeout(() => document.getElementById('lockInput')?.focus(), 100);
+}
+
+function submitLock() {
+  const input = document.getElementById('lockInput');
+  const err   = document.getElementById('lockError');
+  if (input.value === getStoredPass()) {
+    sessionStorage.setItem(AUTH_KEY, 'ok');
+    document.getElementById('lockScreen').classList.remove('show');
+    err.textContent = '';
+    input.value = '';
+  } else {
+    err.textContent = '비밀번호가 올바르지 않습니다';
+    input.value = '';
+    input.focus();
+    // Shake animation
+    input.style.borderColor = '#ef4444';
+    setTimeout(() => input.style.borderColor = '', 1200);
+  }
+}
+
+function changePassword() {
+  openModal('🔑 비밀번호 변경', '새 비밀번호를 설정하세요', [
+    { id: 'cur',  label: '현재 비밀번호', placeholder: '현재 비밀번호', type: 'password' },
+    { id: 'new1', label: '새 비밀번호',   placeholder: '새 비밀번호',   type: 'password' },
+    { id: 'new2', label: '새 비밀번호 확인', placeholder: '한 번 더 입력', type: 'password' }
+  ], vals => {
+    if (vals.cur !== getStoredPass()) {
+      showToast('현재 비밀번호가 올바르지 않습니다', 'error'); return;
+    }
+    if (!vals.new1.trim()) {
+      showToast('새 비밀번호를 입력하세요', 'error'); return;
+    }
+    if (vals.new1 !== vals.new2) {
+      showToast('새 비밀번호가 일치하지 않습니다', 'error'); return;
+    }
+    localStorage.setItem(PASS_KEY, vals.new1);
+    showToast('비밀번호가 변경되었습니다', 'success');
+  }, '변경');
 }
 
 // ── GitHub Gist Sync ───────────────────────────────────────────
@@ -1301,6 +1449,7 @@ function showToast(msg, type = 'info') {
 
 // ── Init ───────────────────────────────────────────────────────
 function init() {
+  checkLock();
   loadGistCfg();
   if (!load()) {
     const p1 = uid(), p2 = uid(), p3 = uid();

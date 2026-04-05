@@ -597,7 +597,7 @@ function renderSidebar() {
           ${hasSubs ? (st.collapsed ? '▶' : '▼') : ''}
         </span>
         <input class="strategy-name-inp" value="${esc(st.name)}"
-          onclick="event.stopPropagation()"
+          onclick="selectStrategy('s_${st.id}'); event.stopPropagation()"
           onblur="renameStrategy(${st.id}, this.value)"
           onkeydown="if(event.key==='Enter')this.blur()" />
         <button class="row-del" onclick="event.stopPropagation(); deleteStrategy(${st.id})" title="삭제">✕</button>
@@ -613,7 +613,7 @@ function renderSidebar() {
         subDiv.innerHTML = `
           <span class="sub-bullet"></span>
           <input class="sub-name-inp" value="${esc(sub.name)}"
-            onclick="event.stopPropagation()"
+            onclick="selectStrategy('sub_${sub.id}'); event.stopPropagation()"
             onblur="renameSub(${st.id}, ${sub.id}, this.value)"
             onkeydown="if(event.key==='Enter')this.blur()" />
           <button class="row-del" onclick="event.stopPropagation(); deleteSub(${st.id}, ${sub.id})" title="삭제">✕</button>`;

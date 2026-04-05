@@ -330,7 +330,7 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      padding: 5px 12px;
+      padding: 6px 14px;
       border-radius: 7px;
       border: 1px solid #e2e8f0;
       background: #fff;
@@ -343,6 +343,12 @@
       white-space: nowrap;
     }
     .toolbar-btn:hover { border-color: #4f6ef7; color: #4f6ef7; }
+    .toolbar-btn-primary {
+      border-color: #4f6ef7;
+      background: #4f6ef7;
+      color: #fff;
+    }
+    .toolbar-btn-primary:hover { background: #3b55e6; border-color: #3b55e6; color: #fff; }
 
     .content-inner {
       flex: 1;
@@ -674,7 +680,7 @@ function renderContent() {
       <span class="bc-strategy">${esc(label)}</span>
     </div>
     ${url ? `<button class="toolbar-btn" onclick="window.open('${esc(url)}','_blank')" title="새 탭에서 열기">↗ 새 탭</button>` : ''}
-    <button class="toolbar-btn" onclick="promptEditUrl()" title="URL 설정">✏️ URL 설정</button>`;
+    <button class="toolbar-btn toolbar-btn-primary" onclick="promptEditUrl()" title="URL 설정">🔗 URL 설정</button>`;
   area.appendChild(toolbar);
 
   const inner = document.createElement('div');
@@ -909,8 +915,9 @@ function init() {
     state.cells = {};
     save();
   }
-  // Auto-select first product
+  // Auto-select first product and first strategy
   if (!activeProductId && state.products.length) activeProductId = state.products[0].id;
+  if (!activeStrategyKey && state.strategies.length) activeStrategyKey = `s_${state.strategies[0].id}`;
   render();
 }
 

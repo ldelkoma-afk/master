@@ -416,6 +416,9 @@
       box-shadow: 0 24px 60px rgba(0,0,0,0.22);
       animation: popIn 0.15s ease;
     }
+    .modal.modal-wide {
+      width: 780px;
+    }
     @keyframes popIn {
       from { opacity: 0; transform: scale(0.95) translateY(8px); }
       to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -443,6 +446,27 @@
       font-family: inherit;
       transition: border 0.15s;
       color: #1e293b;
+    }
+    .modal-code {
+      width: 100%;
+      min-height: 320px;
+      padding: 12px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: 'Consolas', 'Monaco', 'Menlo', monospace;
+      outline: none;
+      transition: border 0.15s;
+      color: #1e293b;
+      resize: vertical;
+      line-height: 1.6;
+      tab-size: 2;
+    }
+    .modal-code:focus { border-color: #4f6ef7; }
+    .modal-code-hint {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 6px;
     }
     .modal-input:focus { border-color: #4f6ef7; }
 
@@ -665,40 +689,59 @@ function renderContent() {
     return;
   }
 
-  const key = cellKey(activeProductId, activeStrategyKey);
-  const url = state.cells[key] || '';
+  const key   = cellKey(activeProductId, activeStrategyKey);
+  const data  = getCellData(key);   // { type:'url'|'html', value } or null
   const label = stratLabel(activeStrategyKey);
   const pname = productName(activeProductId);
 
   // Toolbar
   const toolbar = document.createElement('div');
   toolbar.className = 'content-toolbar';
+  const newTabBtn = data
+    ? (data.type === 'url'
+        ? `<button class="toolbar-btn" onclick="window.open('${esc(data.value)}','_blank')">↗ 새 탭</button>`
+        : `<button class="toolbar-btn" onclick="openHtmlNewTab()">↗ 새 탭</button>`)
+    : '';
   toolbar.innerHTML = `
     <div class="breadcrumb">
       <span class="bc-product">${esc(pname)}</span>
       <span class="bc-sep">›</span>
       <span class="bc-strategy">${esc(label)}</span>
+      ${data ? `<span class="bc-sep">·</span><span style="font-size:11px;color:#94a3b8">${data.type === 'url' ? '🔗 URL' : '📄 HTML'}</span>` : ''}
     </div>
-    ${url ? `<button class="toolbar-btn" onclick="window.open('${esc(url)}','_blank')" title="새 탭에서 열기">↗ 새 탭</button>` : ''}
-    <button class="toolbar-btn toolbar-btn-primary" onclick="promptEditUrl()" title="URL 설정">🔗 URL 설정</button>`;
+    ${newTabBtn}
+    ${data ? `<button class="toolbar-btn" onclick="clearCell()" title="콘텐츠 삭제">🗑</button>` : ''}
+    <button class="toolbar-btn" onclick="promptEditUrl()">🔗 URL 설정</button>
+    <button class="toolbar-btn toolbar-btn-primary" onclick="promptEditHtml()">📄 HTML</button>`;
   area.appendChild(toolbar);
 
   const inner = document.createElement('div');
   inner.className = 'content-inner';
 
-  if (url) {
-    inner.innerHTML = `<iframe class="content-iframe" src="${esc(url)}" allowfullscreen
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>`;
+  if (data) {
+    const iframe = document.createElement('iframe');
+    iframe.className = 'content-iframe';
+    iframe.setAttribute('allowfullscreen', '');
+    if (data.type === 'url') {
+      iframe.src = data.value;
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
+    } else {
+      iframe.srcdoc = data.value;
+    }
+    inner.appendChild(iframe);
   } else {
     inner.innerHTML = `
       <div class="state-empty">
-        <div class="state-icon">🔗</div>
+        <div class="state-icon">📂</div>
         <div class="state-title">콘텐츠가 없습니다</div>
         <div class="state-desc">
           <strong>${esc(pname)} — ${esc(label)}</strong><br>
-          표시할 URL을 등록하세요.<br>등록된 주소의 페이지가 이 영역에 표시됩니다.
+          URL을 등록하거나 HTML을 직접 붙여넣어 페이지를 만드세요.
         </div>
-        <button class="state-btn" onclick="promptEditUrl()">＋ URL 등록</button>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="state-btn" style="background:#475569" onclick="promptEditUrl()">🔗 URL 등록</button>
+          <button class="state-btn" onclick="promptEditHtml()">📄 HTML 작성</button>
+        </div>
       </div>`;
   }
 
@@ -819,21 +862,44 @@ function deleteSub(stratId, subId) {
   save(); render();
 }
 
+// ── Cell data helpers ──────────────────────────────────────────
+function getCellData(key) {
+  const v = state.cells[key];
+  if (!v) return null;
+  if (typeof v === 'string') return { type: 'url', value: v }; // backwards compat
+  return v;
+}
+
+function clearCell() {
+  if (!activeProductId || !activeStrategyKey) return;
+  if (!confirm('이 콘텐츠를 삭제하시겠습니까?')) return;
+  delete state.cells[cellKey(activeProductId, activeStrategyKey)];
+  save(); renderContent();
+}
+
+function openHtmlNewTab() {
+  const data = getCellData(cellKey(activeProductId, activeStrategyKey));
+  if (!data || data.type !== 'html') return;
+  const blob = new Blob([data.value], { type: 'text/html' });
+  window.open(URL.createObjectURL(blob), '_blank');
+}
+
 // ── URL editing ────────────────────────────────────────────────
 function promptEditUrl() {
   if (!activeProductId || !activeStrategyKey) return;
-  const key  = cellKey(activeProductId, activeStrategyKey);
-  const cur  = state.cells[key] || '';
+  const key   = cellKey(activeProductId, activeStrategyKey);
+  const data  = getCellData(key);
+  const cur   = (data?.type === 'url') ? data.value : '';
   const pname = productName(activeProductId);
   const label = stratLabel(activeStrategyKey);
 
   openModal(
-    'URL 등록',
+    '🔗 URL 등록',
     `${pname} — ${label}`,
     [{ id: 'url', label: '페이지 URL', placeholder: 'https://example.com', value: cur }],
     vals => {
       const url = vals.url.trim();
-      if (url) state.cells[key] = url;
+      if (url) state.cells[key] = { type: 'url', value: url };
       else delete state.cells[key];
       save(); renderContent();
     },
@@ -841,28 +907,69 @@ function promptEditUrl() {
   );
 }
 
+// ── HTML editing ───────────────────────────────────────────────
+function promptEditHtml() {
+  if (!activeProductId || !activeStrategyKey) return;
+  const key   = cellKey(activeProductId, activeStrategyKey);
+  const data  = getCellData(key);
+  const cur   = (data?.type === 'html') ? data.value : '';
+  const pname = productName(activeProductId);
+  const label = stratLabel(activeStrategyKey);
+
+  openModal(
+    '📄 HTML 편집',
+    `${pname} — ${label}`,
+    [{ id: 'html', label: 'HTML 코드를 붙여넣으세요', placeholder: '<!DOCTYPE html>\n<html>...</html>', value: cur, type: 'textarea' }],
+    vals => {
+      const html = vals.html.trim();
+      if (html) state.cells[key] = { type: 'html', value: html };
+      else delete state.cells[key];
+      save(); renderContent();
+    },
+    '저장',
+    { wide: true }
+  );
+}
+
 // ── Modal engine ───────────────────────────────────────────────
 let _modalCb = null;
 
-function openModal(title, sub, fields, cb, okLabel = '확인') {
+function openModal(title, sub, fields, cb, okLabel = '확인', opts = {}) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalSub').textContent   = sub;
   document.getElementById('modalOk').textContent    = okLabel;
   _modalCb = cb;
 
+  // Wide mode
+  const modal = document.querySelector('.modal');
+  modal.classList.toggle('modal-wide', !!opts.wide);
+
   const body = document.getElementById('modalBody');
-  body.innerHTML = fields.map(f => `
-    <label class="field-label" for="mf_${f.id}">${f.label}</label>
-    <input class="modal-input" id="mf_${f.id}"
-      placeholder="${esc(f.placeholder || '')}"
-      value="${esc(f.value || '')}" />`).join('');
+  body.innerHTML = fields.map(f => {
+    if (f.type === 'textarea') {
+      return `
+        <label class="field-label" for="mf_${f.id}">${f.label}</label>
+        <textarea class="modal-input modal-code" id="mf_${f.id}"
+          placeholder="${esc(f.placeholder || '')}"
+          spellcheck="false">${esc(f.value || '')}</textarea>
+        <div class="modal-code-hint">전체 HTML 코드를 붙여넣으세요. &lt;!DOCTYPE html&gt; 포함 권장.</div>`;
+    }
+    return `
+      <label class="field-label" for="mf_${f.id}">${f.label}</label>
+      <input class="modal-input" id="mf_${f.id}"
+        placeholder="${esc(f.placeholder || '')}"
+        value="${esc(f.value || '')}" />`;
+  }).join('');
 
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(() => document.getElementById(`mf_${fields[0].id}`)?.focus(), 60);
 
-  // Enter key on inputs
-  body.querySelectorAll('.modal-input').forEach(inp => {
+  // Enter to confirm only for single-line inputs (not textarea)
+  body.querySelectorAll('input.modal-input').forEach(inp => {
     inp.onkeydown = e => { if (e.key === 'Enter') confirmModal(); if (e.key === 'Escape') closeModal(); };
+  });
+  body.querySelectorAll('textarea.modal-input').forEach(ta => {
+    ta.onkeydown = e => { if (e.key === 'Escape') closeModal(); };
   });
 }
 

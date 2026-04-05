@@ -615,7 +615,7 @@ function renderTabs() {
     tab.onclick = e => { if (e.target.classList.contains('tab-del')) return; selectProduct(p.id); };
     tab.innerHTML = `
       <input class="tab-name-inp" value="${esc(p.name)}"
-        onclick="event.stopPropagation()"
+        onclick="selectProduct(${p.id}); event.stopPropagation()"
         onblur="renameProduct(${p.id}, this.value)"
         onkeydown="if(event.key==='Enter')this.blur()" />
       <button class="tab-del" onclick="deleteProduct(${p.id})" title="삭제">✕</button>`;

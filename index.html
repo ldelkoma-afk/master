@@ -48,8 +48,30 @@
       flex: 1;
       overflow-x: auto;
       scrollbar-width: none;
+      scroll-behavior: smooth;
     }
     .tabs-scroll::-webkit-scrollbar { display: none; }
+
+    .tabs-arrow {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+      border: none;
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+    .tabs-arrow:last-of-type {
+      border-right: none;
+      border-left: 1px solid rgba(255,255,255,0.08);
+    }
+    .tabs-arrow:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .tabs-arrow.visible { display: flex; }
 
     .product-tab {
       display: flex;
@@ -732,7 +754,9 @@
 <div class="top-bar">
   <button class="mob-menu-btn" onclick="toggleMobileSidebar()" title="메뉴">☰</button>
   <div class="corner">전략 ＼ 상품</div>
+  <button class="tabs-arrow" id="tabsArrowL" onclick="scrollTabs(-1)" title="이전">‹</button>
   <div class="tabs-scroll" id="productTabs"></div>
+  <button class="tabs-arrow" id="tabsArrowR" onclick="scrollTabs(1)" title="다음">›</button>
   <button class="tab-add" onclick="promptAddProduct()" title="상품 추가">＋</button>
   <div class="gist-btns">
     <button class="gist-btn" onclick="changePassword()" title="비밀번호 변경">🔑 <span class="gist-btn-label">비밀번호</span></button>
@@ -850,7 +874,7 @@ function productName(pid) {
 }
 
 // ── Render ─────────────────────────────────────────────────────
-function render() { renderTabs(); renderSidebar(); renderContent(); }
+function render() { renderTabs(); renderSidebar(); renderContent(); setTimeout(updateTabArrows, 50); }
 
 // Product tabs
 function renderTabs() {
@@ -1365,6 +1389,29 @@ function closeMobileSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('show');
 }
+
+// ── Tab scroll arrows ──────────────────────────────────────────
+function scrollTabs(dir) {
+  const el = document.getElementById('productTabs');
+  el.scrollBy({ left: dir * 160, behavior: 'smooth' });
+}
+function updateTabArrows() {
+  const el = document.getElementById('productTabs');
+  const L  = document.getElementById('tabsArrowL');
+  const R  = document.getElementById('tabsArrowR');
+  if (!el || !L || !R) return;
+  const overflow = el.scrollWidth > el.clientWidth + 4;
+  L.classList.toggle('visible', overflow && el.scrollLeft > 4);
+  R.classList.toggle('visible', overflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+}
+// Watch tab scroll position
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('productTabs');
+  if (el) {
+    el.addEventListener('scroll', updateTabArrows);
+    new ResizeObserver(updateTabArrows).observe(el);
+  }
+});
 
 // ── Password Lock ─────────────────────────────────────────────
 const PASS_KEY = 'mktLockPass';

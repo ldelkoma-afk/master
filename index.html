@@ -639,6 +639,78 @@
       transition: background 0.15s;
     }
     .lock-btn:hover { background: #3b55e6; }
+
+    /* ══════════════════════════════
+       MOBILE RESPONSIVE
+    ══════════════════════════════ */
+    .mob-menu-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 52px;
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      font-size: 20px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .mob-menu-btn:hover { color: #fff; }
+
+    /* Sidebar overlay for mobile */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 40;
+    }
+    .sidebar-overlay.show { display: block; }
+
+    @media (max-width: 767px) {
+      /* Top bar */
+      .corner { display: none; }
+      .mob-menu-btn { display: flex; }
+      .gist-btns { padding: 0 6px; gap: 4px; }
+      .gist-btn { padding: 4px 8px; font-size: 11px; }
+      /* Hide text labels, show only emoji on very small screens */
+      .gist-btn-label { display: none; }
+
+      /* Sidebar: slide-in drawer */
+      .sidebar {
+        position: fixed;
+        top: 52px;
+        left: 0;
+        bottom: 0;
+        z-index: 45;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      /* Content takes full width */
+      .content-area { width: 100%; }
+
+      /* Toolbar wraps on small screen */
+      .content-toolbar { flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
+      .breadcrumb { font-size: 12px; min-width: 100%; order: -1; }
+
+      /* Modal full width */
+      .modal { width: 95vw; padding: 20px 16px; }
+      .modal.modal-wide { width: 95vw; }
+      .modal-code { min-height: 200px; }
+
+      /* Toast bottom center */
+      .toast { right: 50%; transform: translateX(50%) translateY(10px); }
+      .toast.show { transform: translateX(50%) translateY(0); }
+
+      /* Tabs scroll touch friendly */
+      .product-tab { padding: 0 16px; }
+    }
   </style>
 </head>
 <body>
@@ -658,19 +730,21 @@
 
 <!-- ── Top bar ── -->
 <div class="top-bar">
+  <button class="mob-menu-btn" onclick="toggleMobileSidebar()" title="메뉴">☰</button>
   <div class="corner">전략 ＼ 상품</div>
   <div class="tabs-scroll" id="productTabs"></div>
   <button class="tab-add" onclick="promptAddProduct()" title="상품 추가">＋</button>
   <div class="gist-btns">
-    <button class="gist-btn" onclick="changePassword()" title="비밀번호 변경">🔑 비밀번호</button>
-    <button class="gist-btn" onclick="openGistSettings()" title="GitHub Gist 설정">⚙️ Gist</button>
-    <button class="gist-btn" onclick="loadFromGist()" title="Gist에서 불러오기">⬇️ 불러오기</button>
-    <button class="gist-btn gist-btn-save" onclick="saveToGist()" title="Gist에 저장">☁️ 저장</button>
+    <button class="gist-btn" onclick="changePassword()" title="비밀번호 변경">🔑 <span class="gist-btn-label">비밀번호</span></button>
+    <button class="gist-btn" onclick="openGistSettings()" title="GitHub Gist 설정">⚙️ <span class="gist-btn-label">Gist</span></button>
+    <button class="gist-btn" onclick="loadFromGist()" title="Gist에서 불러오기">⬇️ <span class="gist-btn-label">불러오기</span></button>
+    <button class="gist-btn gist-btn-save" onclick="saveToGist()" title="Gist에 저장">☁️ <span class="gist-btn-label">저장</span></button>
   </div>
 </div>
 <div class="toast" id="toastEl"></div>
 
 <!-- ── Body ── -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 <div class="body-wrap">
   <div class="sidebar" id="sidebar"></div>
   <div class="content-area" id="contentArea"></div>
@@ -1037,6 +1111,7 @@ function selectProduct(id) {
 }
 
 function selectStrategy(key) {
+  closeMobileSidebar();
   activeStrategyKey = key;
   if (key.startsWith('sub_')) {
     const subId = Number(key.split('_')[1]);
@@ -1277,6 +1352,18 @@ function esc(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Mobile sidebar ────────────────────────────────────────────
+function toggleMobileSidebar() {
+  const sb  = document.getElementById('sidebar');
+  const ov  = document.getElementById('sidebarOverlay');
+  const open = sb.classList.toggle('open');
+  ov.classList.toggle('show', open);
+}
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
 }
 
 // ── Password Lock ─────────────────────────────────────────────

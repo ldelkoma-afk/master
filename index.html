@@ -1297,6 +1297,11 @@ function promptEditUrl() {
     [{ id: 'url', label: '페이지 URL', placeholder: 'https://example.com', value: cur }],
     vals => {
       const url = vals.url.trim();
+      const selfBase = location.href.split('?')[0].split('#')[0];
+      if (url && url.startsWith(selfBase)) {
+        showToast('앱 자체 URL은 등록할 수 없습니다.', 'error');
+        return;
+      }
       if (url) state.cells[key] = { type: 'url', value: url };
       else delete state.cells[key];
       save(); renderContent();

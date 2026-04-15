@@ -1103,7 +1103,9 @@ function renderContent() {
       iframe.src = data.value;
       iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
     } else {
-      iframe.srcdoc = data.value;
+      const anchorFix = `<script>document.addEventListener('click',function(e){var a=e.target.closest('a[href^="#"]');if(a){e.preventDefault();var el=document.getElementById(a.getAttribute('href').slice(1));if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}});<\/script>`;
+      const html = data.value;
+      iframe.srcdoc = html.includes('</body>') ? html.replace('</body>', anchorFix + '</body>') : html + anchorFix;
     }
     inner.appendChild(iframe);
   } else {

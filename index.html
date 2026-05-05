@@ -926,10 +926,10 @@ function renderTabs() {
 
     tab.innerHTML = `
       <span class="drag-handle" title="드래그하여 순서 변경">⠿</span>
-      <input class="tab-name-inp" value="${esc(p.name)}"
+      <input class="tab-name-inp" value="${esc(p.name)}" size="${Math.max(1, p.name.length)}"
         onclick="if(activeProductId!==${p.id}) selectProduct(${p.id}); event.stopPropagation()"
         ondragstart="event.stopPropagation()"
-        onblur="renameProduct(${p.id}, this.value)"
+        onblur="renameProduct(${p.id}, this.value); this.size=Math.max(1,this.value.length)"
         onkeydown="if(event.key==='Enter')this.blur()" />
       <button class="tab-del" onclick="deleteProduct(${p.id})" title="삭제">✕</button>`;
     wrap.appendChild(tab);

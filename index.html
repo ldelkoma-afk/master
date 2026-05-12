@@ -180,6 +180,25 @@
     .gist-btn-save { border-color: rgba(79,110,247,0.7); color: #818cf8; }
     .gist-btn-save:hover { background: #4f6ef7; border-color: #4f6ef7; color: #fff; }
 
+    /* ── Note (메모) content area ── */
+    .content-note {
+      padding: 36px 48px;
+      font-size: 15px;
+      line-height: 1.85;
+      color: #1e293b;
+      max-width: 860px;
+      margin: 0 auto;
+      height: 100%;
+      overflow-y: auto;
+      outline: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      cursor: text;
+    }
+    .content-note a { color: #4f6ef7; word-break: break-all; }
+    .content-note a:hover { text-decoration: underline; }
+    .content-note:empty::before { content: '여기에 텍스트를 입력하세요…'; color: #94a3b8; }
+
     /* ── Settings dropdown ── */
     .settings-wrap {
       position: relative;
@@ -1111,24 +1130,51 @@ function renderContent() {
   const newTabBtn = data
     ? (data.type === 'url'
         ? `<button class="toolbar-btn" onclick="window.open('${esc(data.value)}','_blank')">↗ 새 탭</button>`
-        : `<button class="toolbar-btn" onclick="openHtmlNewTab()">↗ 새 탭</button>`)
+        : data.type === 'html'
+          ? `<button class="toolbar-btn" onclick="openHtmlNewTab()">↗ 새 탭</button>`
+          : '')
     : '';
+  const typeLabel = { url: '🔗 URL', html: '📄 HTML', note: '✏️ 메모' }[data?.type] ?? '';
   toolbar.innerHTML = `
     <div class="breadcrumb">
       <span class="bc-product">${esc(pname)}</span>
       <span class="bc-sep">›</span>
       <span class="bc-strategy">${esc(label)}</span>
-      ${data ? `<span class="bc-sep">·</span><span style="font-size:11px;color:#94a3b8">${data.type === 'url' ? '🔗 URL' : '📄 HTML'}</span>` : ''}
+      ${data ? `<span class="bc-sep">·</span><span style="font-size:11px;color:#94a3b8">${typeLabel}</span>` : ''}
     </div>
     ${newTabBtn}
     ${data ? `<button class="toolbar-btn" onclick="clearCell()" title="콘텐츠 삭제">🗑</button>` : ''}
     <button class="toolbar-btn" onclick="promptEditUrl()">🔗 URL 설정</button>
+    <button class="toolbar-btn" onclick="promptEditNote()">✏️ 메모</button>
     <button class="toolbar-btn toolbar-btn-primary" onclick="promptEditHtml()">📄 HTML</button>`;
   area.appendChild(toolbar);
 
   const inner = document.createElement('div');
   inner.className = 'content-inner';
-  if (data) {
+  if (data && data.type === 'note') {
+    const noteDiv = document.createElement('div');
+    noteDiv.className = 'content-note';
+    noteDiv.contentEditable = true;
+    noteDiv.innerHTML = noteToHtml(data.value);
+    let saveTimer;
+    noteDiv.addEventListener('input', () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        const text = noteDiv.innerText;
+        if (text.trim()) state.cells[key] = { type: 'note', value: text };
+        else delete state.cells[key];
+        save();
+      }, 600);
+    });
+    noteDiv.addEventListener('blur', () => {
+      clearTimeout(saveTimer);
+      const text = noteDiv.innerText;
+      if (text.trim()) state.cells[key] = { type: 'note', value: text };
+      else delete state.cells[key];
+      save();
+    });
+    inner.appendChild(noteDiv);
+  } else if (data) {
     const iframe = document.createElement('iframe');
     iframe.className = 'content-iframe';
     iframe.setAttribute('allowfullscreen', '');
@@ -1148,10 +1194,11 @@ function renderContent() {
         <div class="state-title">콘텐츠가 없습니다</div>
         <div class="state-desc">
           <strong>${esc(pname)} — ${esc(label)}</strong><br>
-          URL을 등록하거나 HTML을 직접 붙여넣어 페이지를 만드세요.
+          URL을 등록하거나, 메모를 작성하거나, HTML을 붙여넣으세요.
         </div>
-        <div style="display:flex;gap:10px;margin-top:4px">
+        <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
           <button class="state-btn" style="background:#475569" onclick="promptEditUrl()">🔗 URL 등록</button>
+          <button class="state-btn" style="background:#0f766e" onclick="promptEditNote()">✏️ 메모 작성</button>
           <button class="state-btn" onclick="promptEditHtml()">📄 HTML 작성</button>
         </div>
       </div>`;
@@ -1341,6 +1388,32 @@ function promptEditUrl() {
       else delete state.cells[key];
       save(); renderContent();
     }, '저장');
+}
+
+function noteToHtml(text) {
+  const urlRe = /(https?:\/\/[^\s]+)/g;
+  return text.split(urlRe).map((part, i) => {
+    if (i % 2 === 1) {
+      const e = part.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<a href="${e}" target="_blank" rel="noopener">${e}</a>`;
+    }
+    return part.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }).join('');
+}
+
+function promptEditNote() {
+  if (!activeProductId || !activeStrategyKey) return;
+  const key  = cellKey(activeProductId, activeStrategyKey);
+  const data = getCellData(key);
+  const cur  = (data?.type === 'note') ? data.value : '';
+  openModal('✏️ 메모 작성', `${productName(activeProductId)} — ${stratLabel(activeStrategyKey)}`,
+    [{ id: 'note', label: '내용 (URL 붙여넣으면 자동 링크)', placeholder: '텍스트를 입력하거나 URL을 붙여넣으세요', value: cur, type: 'textarea' }],
+    vals => {
+      const note = vals.note.trim();
+      if (note) state.cells[key] = { type: 'note', value: note };
+      else delete state.cells[key];
+      save(); renderContent();
+    }, '저장', { wide: true });
 }
 
 function promptEditHtml() {

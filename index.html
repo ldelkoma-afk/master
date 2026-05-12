@@ -180,6 +180,34 @@
     .gist-btn-save { border-color: rgba(79,110,247,0.7); color: #818cf8; }
     .gist-btn-save:hover { background: #4f6ef7; border-color: #4f6ef7; color: #fff; }
 
+    /* ── Settings dropdown ── */
+    .settings-wrap {
+      position: relative;
+    }
+    .settings-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: #1e293b;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 6px;
+      min-width: 160px;
+      z-index: 200;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      flex-direction: column;
+      gap: 2px;
+    }
+    .settings-dropdown.open { display: flex; }
+    .settings-dropdown .gist-btn {
+      width: 100%;
+      justify-content: flex-start;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+
     /* ── Toast ── */
     .toast {
       position: fixed;
@@ -759,9 +787,14 @@
   <button class="tabs-arrow" id="tabsArrowR" onclick="scrollTabs(1)" title="다음">›</button>
   <button class="tab-add" onclick="promptAddProduct()" title="상품 추가">＋</button>
   <div class="gist-btns">
-    <button class="gist-btn" onclick="changePassword()" title="비밀번호 변경">🔑 <span class="gist-btn-label">비밀번호</span></button>
-    <button class="gist-btn" onclick="openGistSettings()" title="GitHub Gist 설정">⚙️ <span class="gist-btn-label">Gist</span></button>
-    <button class="gist-btn" onclick="loadFromGist()" title="Gist에서 불러오기">⬇️ <span class="gist-btn-label">불러오기</span></button>
+    <div class="settings-wrap">
+      <button class="gist-btn" onclick="toggleSettingsMenu(event)" title="설정">⚙️</button>
+      <div class="settings-dropdown" id="settingsDropdown">
+        <button class="gist-btn" onclick="changePassword(); closeSettingsMenu()">🔑 비밀번호 변경</button>
+        <button class="gist-btn" onclick="openGistSettings(); closeSettingsMenu()">⚙️ Gist 설정</button>
+        <button class="gist-btn" onclick="loadFromGist(); closeSettingsMenu()">⬇️ 불러오기</button>
+      </div>
+    </div>
     <button class="gist-btn gist-btn-save" onclick="saveToGist()" title="Gist에 저장">☁️ <span class="gist-btn-label">저장</span></button>
   </div>
 </div>
@@ -1453,6 +1486,15 @@ function submitLock() {
     setTimeout(() => input.style.borderColor = '', 1200);
   }
 }
+
+function toggleSettingsMenu(e) {
+  e.stopPropagation();
+  document.getElementById('settingsDropdown').classList.toggle('open');
+}
+function closeSettingsMenu() {
+  document.getElementById('settingsDropdown').classList.remove('open');
+}
+document.addEventListener('click', closeSettingsMenu);
 
 function changePassword() {
   openModal('🔑 비밀번호 변경', '새 비밀번호를 설정하세요', [
